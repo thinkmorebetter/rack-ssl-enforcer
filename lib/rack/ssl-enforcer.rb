@@ -20,7 +20,9 @@ module Rack
         :hsts                 => nil,
         :http_port            => nil,
         :https_port           => nil,
-        :force_secure_cookies => true
+        :force_secure_cookies => true,
+        :cache_control        => false,
+        :cache_max_age        => 1.week
       }
       CONSTRAINTS_BY_TYPE.values.each { |constraint| default_options[constraint] = nil }
 
@@ -84,7 +86,9 @@ module Rack
 
     def redirect_to(location)
       body = "<html><body>You are being <a href=\"#{location}\">redirected</a>.</body></html>"
-      [301, { 'Content-Type' => 'text/html', 'Location' => location, 'Cache-Control' => 'no-cache, no-store, max-age=0, must-revalidate', 'Pragma' => 'no-cache', 'Expires' => 'Fri, 01 Jan 1990 00:00:00 GMT' }, [body]]
+      headers = { 'Content-Type' => 'text/html', 'Location' => location }
+      headers.merge!( { 'Cache-Control' => "public, max-age=#{@options[:cache_max_age].seconds}, must-revalidate", 'Expires' => (Time.zone.now + @options[:cache_max_age]).httpdate } ) if @options[:cache_control]
+      [301, headers, [body]]
     end
 
     def ssl_request?
